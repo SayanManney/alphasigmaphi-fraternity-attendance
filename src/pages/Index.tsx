@@ -283,7 +283,7 @@ const Index = () => {
         ) : (
           /* Attendance Form */
           <div className="animate-slide-in-right space-y-6">
-            <Card className="p-8 shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="p-8 shadow-xl border-0 bg-gradient-to-br from-red-50 to-red-100/50 backdrop-blur-sm">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Chapter Attendance</h2>
                 <p className="text-gray-600">
@@ -302,7 +302,7 @@ const Index = () => {
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="border-gray-200 focus:border-red-900 focus:ring-red-900"
+                      className="border-gray-200 focus:border-red-900 focus:ring-red-900 bg-white/80"
                       placeholder="Enter first name"
                       required
                     />
@@ -317,7 +317,7 @@ const Index = () => {
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="border-gray-200 focus:border-red-900 focus:ring-red-900"
+                      className="border-gray-200 focus:border-red-900 focus:ring-red-900 bg-white/80"
                       placeholder="Enter last name"
                       required
                     />
@@ -333,7 +333,7 @@ const Index = () => {
                     type="time"
                     value={arrivalTime}
                     onChange={(e) => setArrivalTime(e.target.value)}
-                    className="border-gray-200 focus:border-red-900 focus:ring-red-900"
+                    className="border-gray-200 focus:border-red-900 focus:ring-red-900 bg-white/80"
                   />
                 </div>
 
@@ -359,25 +359,25 @@ const Index = () => {
 
             {/* Live Summary */}
             {totalCount > 0 && (
-              <Card className="p-6 shadow-lg border-0 bg-gradient-to-r from-green-50 to-blue-50 animate-fade-in">
+              <Card className="p-6 shadow-lg border-0 bg-gradient-to-br from-red-50 to-red-100/50 backdrop-blur-sm animate-fade-in">
                 <div className="text-center">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-center">
                     <Users className="mr-2 h-5 w-5" />
                     Live Attendance Summary
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                    <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <div className="bg-white/80 rounded-lg p-4 shadow-sm backdrop-blur-sm">
                       <div className="text-2xl font-bold text-red-900">{totalCount}</div>
                       <div className="text-sm text-gray-600">Total Checked In</div>
                     </div>
-                    <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <div className="bg-white/80 rounded-lg p-4 shadow-sm backdrop-blur-sm">
                       <div className="text-2xl font-bold text-red-900 flex items-center justify-center">
                         <Clock className="mr-1 h-5 w-5" />
                         {onTimeCount}
                       </div>
                       <div className="text-sm text-gray-600">On Time</div>
                     </div>
-                    <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <div className="bg-white/80 rounded-lg p-4 shadow-sm backdrop-blur-sm">
                       <div className="text-2xl font-bold text-red-900 flex items-center justify-center">
                         <Timer className="mr-1 h-5 w-5" />
                         {lateCount}
