@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, Users, CheckCircle, Timer, Mail } from 'lucide-react';
+import { Clock, Users, CheckCircle, Timer, Download } from 'lucide-react';
 
 interface AttendanceRecord {
   firstName: string;
@@ -23,9 +23,8 @@ const Index = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
-  const [recipientEmail, setRecipientEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const { toast } = useToast();
 
   // Set current time on load
@@ -152,19 +151,10 @@ const Index = () => {
     return csvContent;
   };
 
-  const handleExportAttendance = async () => {
+  const handleDownloadAttendance = async () => {
     if (attendanceRecords.length === 0) return;
     
-    if (!recipientEmail.trim()) {
-      toast({
-        title: "Missing Email",
-        description: "Please enter an email address to send the attendance sheet",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsExporting(true);
+    setIsDownloading(true);
     
     try {
       // Generate CSV content
@@ -184,23 +174,22 @@ const Index = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      console.log('Exporting attendance records:', attendanceRecords);
-      console.log('Recipient email:', recipientEmail);
+      console.log('Downloaded attendance records:', attendanceRecords);
       
       toast({
-        title: "⚠️ Download Started",
-        description: "CSV downloaded. To enable email functionality, please connect to Supabase for backend services.",
+        title: "✅ Download Complete",
+        description: "CSV file has been downloaded successfully.",
       });
       
     } catch (error) {
-      console.error('Export error:', error);
+      console.error('Download error:', error);
       toast({
-        title: "Export Error",
-        description: "Failed to export attendance. Please try again.",
+        title: "Download Error",
+        description: "Failed to download attendance. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsExporting(false);
+      setIsDownloading(false);
     }
   };
 
@@ -209,35 +198,26 @@ const Index = () => {
   const totalCount = attendanceRecords.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen" style={{ backgroundColor: '#f6d192' }}>
       {/* Admin Controls */}
-      <div className="absolute top-4 right-4 z-10 space-y-2">
-        <div className="space-y-2">
-          <Input
-            type="email"
-            placeholder="Enter email for attendance sheet"
-            value={recipientEmail}
-            onChange={(e) => setRecipientEmail(e.target.value)}
-            className="border-gray-200 focus:border-red-900 focus:ring-red-900 text-sm"
-          />
-          <Button
-            onClick={handleExportAttendance}
-            disabled={attendanceRecords.length === 0 || isExporting}
-            className="w-full bg-red-900 hover:bg-red-800 text-white shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-          >
-            {isExporting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Mail className="mr-2 h-4 w-4" />
-                Export Attendance
-              </>
-            )}
-          </Button>
-        </div>
+      <div className="absolute top-4 right-4 z-10">
+        <Button
+          onClick={handleDownloadAttendance}
+          disabled={attendanceRecords.length === 0 || isDownloading}
+          className="bg-red-900 hover:bg-red-800 text-white shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+        >
+          {isDownloading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Downloading...
+            </>
+          ) : (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              Download Attendance
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Hero Section */}
@@ -274,7 +254,10 @@ const Index = () => {
             
             <Button
               onClick={handleStartChapter}
-              className="bg-gradient-to-r from-red-900 to-red-700 hover:from-red-800 hover:to-red-600 text-white text-xl px-12 py-6 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-xl animate-pulse"
+              className="bg-gradient-to-r from-red-900 to-red-700 hover:from-red-800 hover:to-red-600 text-white text-xl px-12 py-6 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-xl shadow-red-900/25 hover:shadow-red-900/40"
+              style={{
+                boxShadow: '0 0 20px rgba(127, 29, 29, 0.3), 0 0 40px rgba(127, 29, 29, 0.1)'
+              }}
             >
               <Clock className="mr-3 h-6 w-6" />
               Start Chapter
