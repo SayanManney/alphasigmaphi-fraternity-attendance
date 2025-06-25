@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, Users, CheckCircle, Timer } from 'lucide-react';
+import { Clock, Users, CheckCircle, Timer, Mail } from 'lucide-react';
 
 interface AttendanceRecord {
   firstName: string;
@@ -18,11 +18,14 @@ interface AttendanceRecord {
 const Index = () => {
   const [chapterStarted, setChapterStarted] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
+  const [customStartTime, setCustomStartTime] = useState('');
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
   // Set current time on load
@@ -30,17 +33,31 @@ const Index = () => {
     const now = new Date();
     const timeString = now.toTimeString().slice(0, 5);
     setArrivalTime(timeString);
+    setCustomStartTime(timeString);
   }, []);
 
   const handleStartChapter = () => {
+    if (!customStartTime) {
+      toast({
+        title: "Missing Start Time",
+        description: "Please enter a start time for the chapter",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const now = new Date();
-    setStartTime(now);
+    const [hours, minutes] = customStartTime.split(':').map(Number);
+    const chapterStart = new Date(now);
+    chapterStart.setHours(hours, minutes, 0, 0);
+    
+    setStartTime(chapterStart);
     setChapterStarted(true);
-    console.log('Chapter started at:', now);
+    console.log('Chapter started at:', chapterStart);
     
     toast({
       title: "Chapter Started! 🔥",
-      description: `Official start time: ${now.toLocaleTimeString()}`,
+      description: `Official start time: ${chapterStart.toLocaleTimeString()}`,
     });
   };
 
@@ -119,16 +136,72 @@ const Index = () => {
     console.log('New attendance record:', newRecord);
   };
 
-  const handleExportAttendance = () => {
-    if (attendanceRecords.length === 0) return;
-
-    // In a real app, this would trigger the Google Sheets export
-    console.log('Exporting attendance records:', attendanceRecords);
+  const generateCSV = () => {
+    const headers = ['First Name', 'Last Name', 'Arrival Time', 'Status', 'Timestamp'];
+    const csvContent = [
+      headers.join(','),
+      ...attendanceRecords.map(record => [
+        record.firstName,
+        record.lastName,
+        record.arrivalTime,
+        record.status,
+        record.timestamp.toLocaleString()
+      ].join(','))
+    ].join('\n');
     
-    toast({
-      title: "✅ Attendance emailed!",
-      description: "Attendance sheet sent to chapter president",
-    });
+    return csvContent;
+  };
+
+  const handleExportAttendance = async () => {
+    if (attendanceRecords.length === 0) return;
+    
+    if (!recipientEmail.trim()) {
+      toast({
+        title: "Missing Email",
+        description: "Please enter an email address to send the attendance sheet",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    
+    try {
+      // Generate CSV content
+      const csvContent = generateCSV();
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Create a downloadable CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Chapter_Attendance_${today}.csv`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('Exporting attendance records:', attendanceRecords);
+      console.log('Recipient email:', recipientEmail);
+      
+      toast({
+        title: "⚠️ Download Started",
+        description: "CSV downloaded. To enable email functionality, please connect to Supabase for backend services.",
+      });
+      
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export Error",
+        description: "Failed to export attendance. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const onTimeCount = attendanceRecords.filter(r => r.status === 'On Time').length;
@@ -138,14 +211,33 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       {/* Admin Controls */}
-      <div className="absolute top-4 right-4 z-10">
-        <Button
-          onClick={handleExportAttendance}
-          disabled={attendanceRecords.length === 0}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-        >
-          Export Attendance
-        </Button>
+      <div className="absolute top-4 right-4 z-10 space-y-2">
+        <div className="space-y-2">
+          <Input
+            type="email"
+            placeholder="Enter email for attendance sheet"
+            value={recipientEmail}
+            onChange={(e) => setRecipientEmail(e.target.value)}
+            className="border-gray-200 focus:border-red-900 focus:ring-red-900 text-sm"
+          />
+          <Button
+            onClick={handleExportAttendance}
+            disabled={attendanceRecords.length === 0 || isExporting}
+            className="w-full bg-red-900 hover:bg-red-800 text-white shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            {isExporting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Mail className="mr-2 h-4 w-4" />
+                Export Attendance
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Hero Section */}
@@ -160,11 +252,29 @@ const Index = () => {
       {/* Main Content */}
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
         {!chapterStarted ? (
-          /* Start Chapter Button */
-          <div className="text-center animate-fade-in">
+          /* Chapter Start Section */
+          <div className="text-center animate-fade-in space-y-6">
+            <Card className="p-6 shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-900">Set Chapter Start Time</h2>
+                <div className="space-y-2">
+                  <Label htmlFor="startTime" className="text-sm font-medium text-gray-700">
+                    Chapter Start Time
+                  </Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={customStartTime}
+                    onChange={(e) => setCustomStartTime(e.target.value)}
+                    className="border-gray-200 focus:border-red-900 focus:ring-red-900"
+                  />
+                </div>
+              </div>
+            </Card>
+            
             <Button
               onClick={handleStartChapter}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xl px-12 py-6 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-xl animate-pulse"
+              className="bg-gradient-to-r from-red-900 to-red-700 hover:from-red-800 hover:to-red-600 text-white text-xl px-12 py-6 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-xl animate-pulse"
             >
               <Clock className="mr-3 h-6 w-6" />
               Start Chapter
@@ -192,7 +302,7 @@ const Index = () => {
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-200 focus:border-red-900 focus:ring-red-900"
                       placeholder="Enter first name"
                       required
                     />
@@ -207,7 +317,7 @@ const Index = () => {
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                      className="border-gray-200 focus:border-red-900 focus:ring-red-900"
                       placeholder="Enter last name"
                       required
                     />
@@ -223,14 +333,14 @@ const Index = () => {
                     type="time"
                     value={arrivalTime}
                     onChange={(e) => setArrivalTime(e.target.value)}
-                    className="border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                    className="border-gray-200 focus:border-red-900 focus:ring-red-900"
                   />
                 </div>
 
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 text-lg rounded-full shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="w-full bg-gradient-to-r from-red-900 to-red-700 hover:from-red-800 hover:to-red-600 text-white py-3 text-lg rounded-full shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   {isSubmitting ? (
                     <>
@@ -257,18 +367,18 @@ const Index = () => {
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                     <div className="bg-white rounded-lg p-4 shadow-sm">
-                      <div className="text-2xl font-bold text-purple-600">{totalCount}</div>
+                      <div className="text-2xl font-bold text-red-900">{totalCount}</div>
                       <div className="text-sm text-gray-600">Total Checked In</div>
                     </div>
                     <div className="bg-white rounded-lg p-4 shadow-sm">
-                      <div className="text-2xl font-bold text-green-600 flex items-center justify-center">
+                      <div className="text-2xl font-bold text-red-900 flex items-center justify-center">
                         <Clock className="mr-1 h-5 w-5" />
                         {onTimeCount}
                       </div>
                       <div className="text-sm text-gray-600">On Time</div>
                     </div>
                     <div className="bg-white rounded-lg p-4 shadow-sm">
-                      <div className="text-2xl font-bold text-orange-600 flex items-center justify-center">
+                      <div className="text-2xl font-bold text-red-900 flex items-center justify-center">
                         <Timer className="mr-1 h-5 w-5" />
                         {lateCount}
                       </div>
