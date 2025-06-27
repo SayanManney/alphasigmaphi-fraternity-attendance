@@ -20,14 +20,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Check active session
     const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setUser(profile);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          // Try to get user profile, but handle case where table doesn't exist
+          try {
+            const { data: profile } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            setUser(profile);
+          } catch (error) {
+            console.log('Users table not found - this is expected on first setup');
+            setUser(null);
+          }
+        }
+      } catch (error) {
+        console.log('Error checking auth session:', error);
       }
       setLoading(false);
     };
@@ -36,14 +46,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setUser(profile);
-      } else {
+      try {
+        if (session?.user) {
+          try {
+            const { data: profile } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            setUser(profile);
+          } catch (error) {
+            console.log('Users table not found - this is expected on first setup');
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.log('Error in auth state change:', error);
         setUser(null);
       }
       setLoading(false);
@@ -55,14 +75,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signUp = async (email: string, password: string, firstName: string, lastName: string, school: string) => {
     try {
       // Check if school already exists
-      const { data: existingSchool } = await supabase
-        .from('users')
-        .select('id')
-        .eq('school', school.trim())
-        .limit(1);
+      try {
+        const { data: existingSchool } = await supabase
+          .from('users')
+          .select('id')
+          .eq('school', school.trim())
+          .limit(1);
 
-      if (existingSchool && existingSchool.length > 0) {
-        return { error: 'An account for this school already exists. Please contact the current chapter administrator.' };
+        if (existingSchool && existingSchool.length > 0) {
+          return { error: 'An account for this school already exists. Please contact the current chapter administrator.' };
+        }
+      } catch (error) {
+        // Table doesn't exist yet, continue with signup
+        console.log('Users table not found - this is expected on first setup');
       }
 
       const { data, error } = await supabase.auth.signUp({
@@ -73,20 +98,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) return { error: error.message };
 
       if (data.user) {
-        // Create user profile
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert([
-            {
-              id: data.user.id,
-              email,
-              firstName: firstName.trim(),
-              lastName: lastName.trim(),
-              school: school.trim(),
-            }
-          ]);
+        // Try to create user profile
+        try {
+          const { error: profileError } = await supabase
+            .from('users')
+            .insert([
+              {
+                id: data.user.id,
+                email,
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                school: school.trim(),
+              }
+            ]);
 
-        if (profileError) return { error: profileError.message };
+          if (profileError) return { error: profileError.message };
+        } catch (error) {
+          return { error: 'Database tables not set up yet. Please create the required tables in Supabase first.' };
+        }
       }
 
       return {};
