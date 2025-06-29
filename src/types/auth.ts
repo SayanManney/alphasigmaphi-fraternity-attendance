@@ -5,7 +5,6 @@ export interface User {
   firstName: string;
   lastName: string;
   school: string;
-  created_at: string;
 }
 
 export interface AttendanceSession {
@@ -14,7 +13,6 @@ export interface AttendanceSession {
   school: string;
   start_time: string;
   date: string;
-  created_at: string;
 }
 
 export interface AttendanceRecord {

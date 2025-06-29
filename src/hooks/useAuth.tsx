@@ -1,7 +1,13 @@
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { User } from '@/types/auth';
+import { createContext, useContext, useState } from 'react';
+
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  school: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -15,131 +21,36 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check active session
-    const getUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          // Try to get user profile, but handle case where table doesn't exist
-          try {
-            const { data: profile } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-            setUser(profile);
-          } catch (error) {
-            console.log('Users table not found - this is expected on first setup');
-            setUser(null);
-          }
-        }
-      } catch (error) {
-        console.log('Error checking auth session:', error);
-      }
-      setLoading(false);
-    };
-
-    getUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      try {
-        if (session?.user) {
-          try {
-            const { data: profile } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-            setUser(profile);
-          } catch (error) {
-            console.log('Users table not found - this is expected on first setup');
-            setUser(null);
-          }
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.log('Error in auth state change:', error);
-        setUser(null);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const [loading, setLoading] = useState(false);
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string, school: string) => {
-    try {
-      // Check if school already exists
-      try {
-        const { data: existingSchool } = await supabase
-          .from('users')
-          .select('id')
-          .eq('school', school.trim())
-          .limit(1);
-
-        if (existingSchool && existingSchool.length > 0) {
-          return { error: 'An account for this school already exists. Please contact the current chapter administrator.' };
-        }
-      } catch (error) {
-        // Table doesn't exist yet, continue with signup
-        console.log('Users table not found - this is expected on first setup');
-      }
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) return { error: error.message };
-
-      if (data.user) {
-        // Try to create user profile
-        try {
-          const { error: profileError } = await supabase
-            .from('users')
-            .insert([
-              {
-                id: data.user.id,
-                email,
-                firstName: firstName.trim(),
-                lastName: lastName.trim(),
-                school: school.trim(),
-              }
-            ]);
-
-          if (profileError) return { error: profileError.message };
-        } catch (error) {
-          return { error: 'Database tables not set up yet. Please create the required tables in Supabase first.' };
-        }
-      }
-
-      return {};
-    } catch (error) {
-      return { error: 'An unexpected error occurred during sign up.' };
-    }
+    // Simple mock authentication - just set the user
+    const newUser: User = {
+      id: Math.random().toString(36),
+      email,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      school: school.trim(),
+    };
+    setUser(newUser);
+    return {};
   };
 
   const signIn = async (email: string, password: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) return { error: error.message };
-      return {};
-    } catch (error) {
-      return { error: 'An unexpected error occurred during sign in.' };
-    }
+    // Simple mock authentication - just set a mock user
+    const mockUser: User = {
+      id: Math.random().toString(36),
+      email,
+      firstName: 'Demo',
+      lastName: 'User',
+      school: 'Demo University',
+    };
+    setUser(mockUser);
+    return {};
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setUser(null);
   };
 
   return (
